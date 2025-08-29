@@ -1,5 +1,6 @@
 #once
 
+#include "addresses.asm"
 #include "registers.asm"
 #include "instructions.asm"
 
@@ -9,17 +10,23 @@
         low_byte = (imm & 0xff)
         asm {
             MOVH {rd}, {high_byte}
-            OVL {rd}, {low_byte}
+            MOVL {rd}, {low_byte}
         }
     }
 
-    LDL {rd: register}, [{addr: u16}] => asm {
-        MOV r6, {addr}
-        LDL {rd}, [r6]
+    MOV {rd: register}, {rs: register} => asm {
+        ADD {rd}, {rs}, r0
     }
 
-    STL {rs: register}, [{addr: u16}] => asm {
-        MOV r6, {addr}
-        STL {rs}, [r6]
+    TST {rs: register} => asm {
+        CMP {rs}, r0
+    }
+
+    INC {rd: register} => asm {
+        ADDI {rd}, 1
+    }
+
+    DEC {rd: register} => asm {
+        SUBI {rd}, 1
     }
 }
