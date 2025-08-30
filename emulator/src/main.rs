@@ -9,31 +9,23 @@ struct Args {
 }
 
 enum Instruction {
-    Add { destination_register: usize, source_register_a: usize, source_register_b: usize },
-    AddImmediate { destination_register: usize, immediate: u16 },
-    SubtractImmediate { destination_register: usize, immediate: u16},
-    Compare { source_register_a: usize, source_register_b: usize },
-    MoveImmediate { destination_register: usize, upper_byte: bool, immediate: u16 },
-    Load { destination_register: usize, source_register: usize, upper_byte: bool },
-    Store { source_register: usize, destination_register: usize, upper_byte: bool },
-    JumpWithOffset { offset: i16 },
-    BranchIfNotEqual { immediate: i16 },
-    BranchIfCarry { immediate: i16 },
-    BranchIfSigned { immediate: i16 },
+    Add { rd: usize, ra: usize, rb: usize },
+    AddWithCarry { rd: usize, ra: usize, rb: usize },
+    Subtract { rd: usize, ra: usize, rb: usize },
+    SubtractWithBorrow { rd: usize, ra: usize, rb: usize },
+    And { rd: usize, ra: usize, rb: usize },
+    Or { rd: usize, ra: usize, rb: usize },
+    Xor { rd: usize, ra: usize, rb: usize },
+    Not { rd: usize, ra: usize },
     Halt,
 }
 
+#[derive(Default)]
 struct Flags {
     carry: bool,
     overflow: bool,
     zero: bool,
     signed: bool
-}
-
-impl Flags {
-    fn new() -> Self {
-        Self { carry: false, zero: false, signed: false }
-    }
 }
 
 struct Cpu {
@@ -44,11 +36,13 @@ struct Cpu {
     halted: bool,
 }
 
-impl Cpu {
-    fn new() -> Self {
-        Self { memory: [0; 65536], registers: [0; 8], flags: Flags::new(), program_counter: 0, halted: false }
+impl Default for Cpu {
+    fn default() -> Self {
+        Cpu { memory: [0; 65536], registers: [0; 8], flags: Flags::default(), program_counter: 0, halted: false }
     }
+}
 
+impl Cpu {
     fn run(&mut self) -> Result<()> {
         while !self.halted {
             let instruction = self.fetch();
@@ -66,127 +60,120 @@ impl Cpu {
 
     fn decode(&self, instruction: u16) -> Result<Instruction> {
         match instruction >> 12 {
-            0x0 => match instruction & 0x7 {
-                0x0000 => Ok(Instruction::Add {
-                    destination_register: ((instruction >> 9) & 0x7) as usize,
-                    source_register_a: ((instruction >> 6) & 0x7) as usize,
-                    source_register_b: ((instruction >> 3) & 0x7) as usize
-                }),
-                _ => bail!("Unknown instruction: {instruction:0x}")
-            },
-            0x2 => match (instruction & 0x0100) != 0 {
-                false => Ok(Instruction::AddImmediate {
-                    destination_register: ((instruction >> 9) & 0x7) as usize,
-                    immediate: instruction & 0x00ff
-                }),
-                true => Ok(Instruction::SubtractImmediate {
-                    destination_register: ((instruction >> 9) & 0x7) as usize,
-                    immediate: instruction & 0x00ff
-                })
-            },
-            0x3 => Ok(Instruction::Compare {
-                source_register_a: ((instruction >> 9) & 0x7) as usize,
-                source_register_b: ((instruction >> 6) & 0x7) as usize
-            }),
-            0x4 => Ok(Instruction::MoveImmediate {
-                destination_register: ((instruction >> 9) & 0x7) as usize,
-                upper_byte: (instruction & 0x0100) != 0,
-                immediate: instruction & 0x00ff,
-            }),
-            0x5 => Ok(Instruction::Load {
-                destination_register: ((instruction >> 9) & 0x7) as usize,
-                source_register: ((instruction >> 5) & 0x7) as usize,
-                upper_byte: (instruction & 0x0100) != 0
-            }),
-            0x6 => Ok(Instruction::Store {
-                source_register: ((instruction >> 9) & 0x7) as usize,
-                destination_register: ((instruction >> 5) & 0x7) as usize,
-                upper_byte: (instruction & 0x0100) != 0
-            }),
-            0x7 => Ok(Instruction::JumpWithOffset {
-                offset: ((instruction << 4) as i16) >> 4
-            }),
-            0xa => match (instruction >> 9) & 0x7 {
-                0x1 => {
-                    Ok(Instruction::BranchIfNotEqual {
-                        immediate: ((instruction << 7) as i16) >> 7
-                    })
-                },
-                0x2 => {
-                    Ok(Instruction::BranchIfCarry {
-                        immediate: ((instruction << 7) as i16) >> 7
-                    })
-                },
-                0x4 => {
-                    Ok(Instruction::BranchIfSigned {
-                        immediate: ((instruction << 7) as i16) >> 7
-                    })
+            0x0 => {
+                let rd = ((instruction >> 9) & 0b111) as usize;
+                let ra = ((instruction >> 6) & 0b111) as usize;
+                let rb = ((instruction >> 3) & 0b111) as usize;
+                match instruction & 0b111 {
+                    0b000 => Ok(Instruction::Add { rd, ra, rb }),
+                    0b001 => Ok(Instruction::AddWithCarry { rd, ra, rb }),
+                    0b010 => Ok(Instruction::Subtract { rd, ra, rb }),
+                    0b011 => Ok(Instruction::SubtractWithBorrow { rd, ra, rb }),
+                    0b100 => Ok(Instruction::And { rd, ra, rb }),
+                    0b101 => Ok(Instruction::Or { rd, ra, rb }),
+                    0b110 => Ok(Instruction::Xor { rd, ra, rb }),
+                    0b111 => Ok(Instruction::Not { rd, ra }),
+                    _ => unreachable!()
                 }
-                _ => bail!("Unknown instruction: {instruction:0x}")
             },
             0xf => Ok(Instruction::Halt),
-            _ => bail!("Unknown instruction: {instruction:0x}")
+            _ => bail!("Unknown instruction: 0x{instruction:04x}")
         }
     }
 
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
-            Instruction::Add { destination_register, source_register_a, source_register_b } => {
-                (self.registers[destination_register], self.flags.carry) =
-                    self.registers[source_register_a].overflowing_add(self.registers[source_register_b]);
-            },
-            Instruction::AddImmediate { destination_register, immediate } => {
-                (self.registers[destination_register], self.flags.carry) =
-                    self.registers[destination_register].overflowing_add(immediate);
-            },
-            Instruction::SubtractImmediate { destination_register, immediate } => {
-                (self.registers[destination_register], self.flags.carry) =
-                    self.registers[destination_register].overflowing_sub(immediate);
-                self.flags.zero = self.registers[destination_register] == 0;
-            },
-            Instruction::Compare { source_register_a, source_register_b } => {
-                let result: i16 = self.registers[source_register_a].wrapping_sub(self.registers[source_register_b]) as i16;
+            Instruction::Add { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let (result, carry) = ra.overflowing_add(rb);
+                self.registers[rd] = result;
+                self.flags.carry = carry;
+                let xor1 = ra ^ result;
+                let xor2 = rb ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
-                self.flags.signed = result < 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::MoveImmediate { destination_register, upper_byte, immediate } => {
-                self.registers[destination_register] = if upper_byte {
-                    (self.registers[destination_register] & 0x00FF) | immediate << 8
-                } else {
-                    (self.registers[destination_register] & 0xFF00) | immediate
-                }
+            Instruction::AddWithCarry { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let carry = self.flags.carry as u16;
+                let (result, carry1) = ra.overflowing_add(rb);
+                let (result, carry2) = result.overflowing_add(carry);
+                self.registers[rd] = result;
+                self.flags.carry = carry1 | carry2;
+                let xor1 = ra ^ result;
+                let xor2 = rb ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::Load { destination_register, source_register, upper_byte } => {
-                let value = self.read_byte(self.registers[source_register]) as u16;
-                self.registers[destination_register] = value;
+            Instruction::Subtract { rd,ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let (result, borrow) = ra.overflowing_sub(rb);
+                self.registers[rd] = result;
+                self.flags.carry = borrow;
+                let xor1 = ra ^ rb;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::Store { source_register, destination_register, upper_byte } => {
-                let value = if upper_byte {
-                    (self.registers[source_register] >> 8) as u8
-                } else {
-                    (self.registers[source_register] & 0xff) as u8
-                };
-                self.write_byte(self.registers[destination_register], value);
+            Instruction::SubtractWithBorrow { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let borrow = self.flags.carry as u16;
+                let (result, borrow1) = ra.overflowing_sub(rb);
+                let (result, borrow2) = result.overflowing_sub(borrow);
+                self.registers[rd] = result;
+                self.flags.carry = borrow1 | borrow2;
+                let xor1 = ra ^ rb;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::JumpWithOffset { offset } => {
-                self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+            Instruction::And { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let result = ra & rb;
+                self.registers[rd] = result;
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::BranchIfNotEqual { immediate } => {
-                if !self.flags.zero {
-                    self.program_counter = self.program_counter.wrapping_add_signed(immediate << 1);
-                }
+            Instruction::Or { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let result = ra | rb;
+                self.registers[rd] = result;
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::BranchIfCarry { immediate } => {
-                if self.flags.carry {
-                    self.program_counter = self.program_counter.wrapping_add_signed(immediate << 1);
-                }
+            Instruction::Xor { rd, ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let result = ra ^ rb;
+                self.registers[rd] = result;
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::BranchIfSigned { immediate } => {
-                if self.flags.signed {
-                    self.program_counter = self.program_counter.wrapping_add_signed(immediate << 1);
-                }
+            Instruction::Not { rd, ra } => {
+                let result = !self.registers[ra];
+                self.registers[rd] = result;
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::Halt => self.halted = true,
+            Instruction::Halt => self.halted = true
         }
     }
 }
@@ -220,7 +207,7 @@ impl Memory for Cpu {
 }
 
 fn main() -> Result<()> {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::default();
     let args = Args::parse();
     let program = read(args.input)?;
     for (index, byte) in program.iter().enumerate() {

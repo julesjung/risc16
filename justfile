@@ -9,6 +9,9 @@ assemble program="memcopy":
 run program="memcopy": (assemble program)
     @cargo run --manifest-path=emulator/Cargo.toml -q -- build/{{program}}.bin
 
+test:
+    @cargo test --manifest-path=emulator/Cargo.toml
+
 lint:
     @cargo clippy --manifest-path=emulator/Cargo.toml --all
 
