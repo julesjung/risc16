@@ -25,6 +25,7 @@ enum Instruction {
 
 struct Flags {
     carry: bool,
+    overflow: bool,
     zero: bool,
     signed: bool
 }

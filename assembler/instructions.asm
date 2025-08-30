@@ -43,12 +43,14 @@
 
     JMP [{rs: register}] => le(0x8 @ rs @ 0b00000)
 
-    BZ {offset: off9} => le(0x9 @ offset @ 0b000)
-    BNZ {offset: off9} => le(0x9 @ offset @ 0b001)
-    BC  {offset: off9} => le(0x9 @ offset @ 0b010)
-    BNC {offset: off9} => le(0x9 @ offset @ 0b011)
-    BS  {offset: off9} => le(0x9 @ offset @ 0b100)
-    BNS {offset: off9} => le(0x9 @ offset @ 0b101)
+    BC  {offset: off9} => le(0x9 @ offset @ 0b000)
+    BNC {offset: off9} => le(0x9 @ offset @ 0b001)
+    BO  {offset: off9} => le(0x9 @ offset @ 0b010)
+    BNO {offset: off9} => le(0x9 @ offset @ 0b011)
+    BZ  {offset: off9} => le(0x9 @ offset @ 0b100)
+    BNZ {offset: off9} => le(0x9 @ offset @ 0b101)
+    BS  {offset: off9} => le(0x9 @ offset @ 0b110)
+    BNS {offset: off9} => le(0x9 @ offset @ 0b111)
 
     HLT => le(0xf000)
 }
