@@ -303,24 +303,82 @@ impl Cpu {
             Instruction::CompareHighBytes { ra, rb } => todo!(),
             Instruction::CompareImmediateWithLowByte { rs, imm } => todo!(),
             Instruction::CompareImmediateWithHighByte { rs, imm } => todo!(),
-            Instruction::MoveImmediateToLowByte { rd, imm } => todo!(),
-            Instruction::MoveImmediateToHighByte { rd, imm } => todo!(),
-            Instruction::LoadWord { rd, rs } => todo!(),
-            Instruction::LoadToLowByte { rd, rs } => todo!(),
-            Instruction::LoadToHighByte { rd, rs } => todo!(),
-            Instruction::StoreWord { rs, rd } => todo!(),
-            Instruction::StoreFromLowByte { rs, rd } => todo!(),
-            Instruction::StoreFromHighByte { rs, rd } => todo!(),
-            Instruction::JumpToOffset { offset } => todo!(),
-            Instruction::JumpToPointer { rs } => todo!(),
-            Instruction::BranchIfCarry { offset } => todo!(),
-            Instruction::BranchIfNotCarry { offset } => todo!(),
-            Instruction::BranchIfOverflow { offset } => todo!(),
-            Instruction::BranchIfNotOverflow { offset } => todo!(),
-            Instruction::BranchIfZero { offset } => todo!(),
-            Instruction::BranchIfNotZero { offset } => todo!(),
-            Instruction::BranchIfSigned { offset } => todo!(),
-            Instruction::BranchIfNotSigned { offset } => todo!(),
+            Instruction::MoveImmediateToLowByte { rd, imm } => {
+                self.registers[rd] = (self.registers[rd] & 0xFF00) | imm;
+            },
+            Instruction::MoveImmediateToHighByte { rd, imm } => {
+                self.registers[rd] = (self.registers[rd] & 0x00FF) | imm << 8;
+            },
+            Instruction::LoadWord { rd, rs } => {
+                let value = self.read_word(self.registers[rs]);
+                self.registers[rd] = value;
+            },
+            Instruction::LoadToLowByte { rd, rs } => {
+                let value = self.read_byte(self.registers[rs]) as u16;
+                self.registers[rd] = (self.registers[rd] & 0xFF00) | value;
+            },
+            Instruction::LoadToHighByte { rd, rs } => {
+                let value = self.read_byte(self.registers[rs]) as u16;
+                self.registers[rd] = (self.registers[rd] & 0x00FF) | value << 8;
+            },
+            Instruction::StoreWord { rs, rd } => {
+                let value = self.registers[rs];
+                self.write_word(self.registers[rd], value);
+            },
+            Instruction::StoreFromLowByte { rs, rd } => {
+                let value = (self.registers[rs] & 0xff) as u8;
+                self.write_byte(self.registers[rd], value);
+            },
+            Instruction::StoreFromHighByte { rs, rd } => {
+                let value = (self.registers[rs] >> 8) as u8;
+                self.write_byte(self.registers[rd], value);
+            },
+            Instruction::JumpToOffset { offset } => {
+                self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+            },
+            Instruction::JumpToPointer { rs } => {
+                self.program_counter = self.registers[rs];
+            },
+            Instruction::BranchIfCarry { offset } => {
+                if self.flags.carry {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfNotCarry { offset } => {
+                if !self.flags.carry {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfOverflow { offset } => {
+                if self.flags.overflow {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfNotOverflow { offset } => {
+                if !self.flags.overflow {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfZero { offset } => {
+                if self.flags.zero {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfNotZero { offset } => {
+                if !self.flags.zero {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfSigned { offset } => {
+                if self.flags.signed {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
+            Instruction::BranchIfNotSigned { offset } => {
+                if !self.flags.signed {
+                    self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
+                }
+            },
             Instruction::Halt => self.halted = true
         }
     }
