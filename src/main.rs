@@ -1,10 +1,14 @@
+mod assembler;
 mod emulator;
 
-use std::{fs::{self, read}, process::Command};
-use anyhow::{bail, Result};
+use std::env;
+use std::fs::File;
+
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::emulator::{Cpu, Memory};
+use crate::assembler::assemble;
+use crate::emulator::{emulate};
 
 #[derive(Parser)]
 #[command(version)]
@@ -15,48 +19,44 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Assemble { input: String },
-    Emulate { input: String },
+    Assemble {
+        input: String,
+        output: String
+    },
+    Emulate {
+        input: String,
+        #[arg(short, long, default_value = "asm", value_parser = ["asm", "bin"])]
+        format: String,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Assemble { input } => assemble(input),
-        Commands::Emulate { input } => emulate(input)
-    }
-    
-}
-
-fn assemble(input: String) -> Result<()> {
-    fs::create_dir_all("build")?;
-    let output = format!("build/{input}.bin");
-    let input = format!("programs/{input}.asm");
-    let result = Command::new("customasm")
-        .args(["assembler/architecture.asm", &input, "-o", &output, "-f", "binary", "-q"])
-        .status();
-
-    if let Ok(result) = result {
-        if !result.success() {
-            bail!("Unable to assemble the program");
+    match &cli.command {
+        Commands::Assemble { input, output } => assemble(input, output),
+        Commands::Emulate { input, format } => {
+            match format.as_str() {
+                "asm" => {
+                    let program_name = input
+                        .split('/')
+                        .next_back()
+                        .unwrap()
+                        .strip_suffix(".asm")
+                        .unwrap();
+                    let tmp_dir = env::temp_dir();
+                    let output = tmp_dir.join(format!("{program_name}.bin"));
+                    let _ = File::create(&output);
+                    let output = output.to_str().unwrap();
+                    assemble(input, output)?;
+                    emulate(output)
+                },
+                "bin" => {
+                    emulate(input)
+                }
+                _ => unreachable!()
+            }
         }
-        Ok(())
-    } else {
-        bail!("Unable to run customasm. Make sure it is correctly installed");
     }
-}
-
-fn emulate(input: String) -> Result<()> {
-    let input = format!("build/{input}.bin");
-    let program = read(input)?;
-
-    let mut cpu = Cpu::default();
-    for (index, byte) in program.iter().enumerate() {
-        cpu.write_byte(index as u16, *byte);
-    }
-    cpu.run()?;
-    println!("{:?}", &cpu.memory[0x0100..0x0110]);
     
-    Ok(())
 }

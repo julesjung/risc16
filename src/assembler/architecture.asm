@@ -1,7 +1,35 @@
 #once
 
-#include "addresses.asm"
-#include "registers.asm"
+#subruledef register {
+    r0 => 0b000
+    r1 => 0b001
+    r2 => 0b010
+    r3 => 0b011
+    r4 => 0b100
+    r5 => 0b101
+    r6 => 0b110
+    r7 => 0b111
+}
+
+#subruledef off9 {
+    {addr: u16} => {
+		relative_address = (addr - pc - 2) >> 1
+		assert(relative_address <=  0xff)
+		assert(relative_address >= !0xff)
+		relative_address`9
+	}
+    
+}
+
+#subruledef off12 {
+    {addr: u16} => {
+		relative_address = (addr - pc - 2) >> 1
+		assert(relative_address <=  0x8ff)
+		assert(relative_address >= !0x8ff)
+		relative_address`12
+	}
+    
+}
 
 #ruledef {
     ADD {rd: register}, {ra: register}, {rb: register} => le(0x0 @ rd @ ra @ rb @ 0b000)
@@ -53,4 +81,45 @@
     BNS {offset: off9} => le(0x9 @ offset @ 0b111)
 
     HLT => le(0xf000)
+}
+
+#ruledef {
+    MOV {rd: register}, {imm: u16} => {
+        high_byte = (imm >> 8)
+        low_byte = (imm & 0xff)
+        asm {
+            MOVH {rd}, {high_byte}
+            MOVL {rd}, {low_byte}
+        }
+    }
+
+    MOV {rd: register}, {rs: register} => asm {
+        ADD {rd}, {rs}, r0
+    }
+
+    TST {rs: register} => asm {
+        CMP {rs}, r0
+    }
+
+    INC {rd: register} => asm {
+        ADDI {rd}, 1
+    }
+
+    DEC {rd: register} => asm {
+        SUBI {rd}, 1
+    }
+}
+
+#bankdef code
+{
+    #addr 0x0000
+    #size 0x0100
+    #outp 0
+}
+
+#bankdef data
+{
+    #addr 0x0100
+    #size 0x0010
+    #outp 8 * 0x0100
 }

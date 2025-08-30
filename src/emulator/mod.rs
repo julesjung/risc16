@@ -1,3 +1,5 @@
+use std::fs::read;
+
 use anyhow::{bail, Result};
 
 enum Instruction {
@@ -196,5 +198,18 @@ impl Memory for Cpu {
     fn write_byte(&mut self, address: u16, value: u8) {
         self.memory[address as usize] = value;   
     }
+}
+
+pub fn emulate(input: &str) -> Result<()> {
+    let program = read(input)?;
+
+    let mut cpu = Cpu::default();
+    for (index, byte) in program.iter().enumerate() {
+        cpu.write_byte(index as u16, *byte);
+    }
+    cpu.run()?;
+    println!("{:?}", &cpu.memory[0x0100..0x0110]);
+    
+    Ok(())
 }
 
