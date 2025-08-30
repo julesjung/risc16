@@ -1,7 +1,7 @@
 # RISC16
 
-![GitHub License](https://img.shields.io/github/license/julesjung/risc16?style=for-the-badge)
-![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16?style=for-the-badge)
+![GitHub License](https://img.shields.io/github/license/julesjung/risc16)
+![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16)
 
 ## Installation
 
