@@ -1,22 +1,40 @@
 # RISC16
 
-![GitHub License](https://img.shields.io/github/license/julesjung/risc16)
-![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16)
+[![GitHub License](https://img.shields.io/github/license/julesjung/risc16)](https://https://github.com/julesjung/risc16/blob/main/LICENSE.txt)
+[![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16)](https://github.com/julesjung/risc16/releases/latest)
+
+RISC16 is a custom **16-bit RISC CPU architecture** featuring a Rust-based emulator and assembler support via [customasm](https://github.com/hlorenzi/customasm).
+It implements arithmetic, logic, branching, and memory instructions, with 8 general-purpose registers (r0-r7).
+This project provides a simple platform for experimenting with ISA design and emulator development.
+
+## Features
+
+- 16-bit CPU with 8 general-purpose registers
+- `r0` hard-wired to zero, `r7` used as stack pointer
+- ALU with ADD, ADC, SUB, SBB, AND, OR, XOR, NOT, shifts, rotates
+- Full flag support (zero, carry, signed, overflow)
+- Branching and jumping with signed offsets
+- Load/store for 8-bit and 16-bit memory access
+- Emulator written in Rust with a simple CLI
+- Program assembly with [customasm](https://github.com/hlorenzi/customasm)
 
 ## Installation
 
 ### Dependencies
 
-This project uses `customasm` to assemble its files. 
-- If you are using Cargo for the installation, you can install it using :
+This project requires [`customasm`](https://github.com/hlorenzi/customasm) for assembling programs. You can install it with Cargo:
+
 ```sh
 cargo install customasm
 ```
-- Else, follow the installation instructions from [their GitHub repository](https://github.com/hlorenzi/customasm?tab=readme-ov-file#installation).
+
+Or follow the installation instructions in the [`customasm`](https://github.com/hlorenzi/customasm) repository.
+
 
 ### Using Cargo
 
-Make sure that you have Rust installed on your system. If not, download and install it from [the official website](https://www.rust-lang.org/tools/install).
+Make sure that you have Rust installed on your system. If not, download and install it from [the official website](https://www.rust-lang.org/tools/install). Then, you can directly install the `risc16` cli using Cargo:
+
 ```sh
 cargo install --git https://github.com/julesjung/risc16.git risc16
 ```
@@ -25,24 +43,20 @@ cargo install --git https://github.com/julesjung/risc16.git risc16
 
 You can find the pre-built binaries on the [GitHub releases page](https://github.com/julesjung/risc16/releases). Download the one corresponding to your operating system and architecture.
 
+## Example
+
+Assemble and run a simple Fibonacci program:
+
+```sh
+risc16 emulate examples/fibonacci.bin
+```
+
 ## Usage
 
-### Assembling a file
+You can see all available commands and options with:
 
 ```sh
-risc16 assemble <INPUT> <OUTPUT>
-```
-
-### Running an assembly file in the emulator
-
-```sh
-risc16 emulate <INPUT>
-```
-
-### Running a binary file in the emulator
-
-```sh
-risc16 emulate -f bin <INPUT>
+risc16 help
 ```
 
 ## License
