@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 use crate::emulator::{Cpu, Memory};
 
 #[derive(Parser)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands
