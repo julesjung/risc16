@@ -11,6 +11,35 @@ enum Instruction {
     Or { rd: usize, ra: usize, rb: usize },
     Xor { rd: usize, ra: usize, rb: usize },
     Not { rd: usize, ra: usize },
+    LogicalLeftShift { rd: usize, rs: usize, imm: u16 },
+    LogicalRightShift { rd: usize, rs: usize, imm: u16 },
+    ArithmeticRightShift { rd: usize, rs: usize, imm: u16 },
+    RotateRight { rd: usize, rs: usize, imm: u16 },
+    AddImmediate { rd: usize, imm: u16 },
+    SubImmediate { rd: usize, imm: u16 },
+    Compare { ra: usize, rb: usize },
+    CompareLowBytes { ra: usize, rb: usize },
+    CompareHighBytes { ra: usize, rb: usize },
+    CompareImmediateWithLowByte { rs: usize, imm: u16 },
+    CompareImmediateWithHighByte { rs: usize, imm: u16 },
+    MoveImmediateToLowByte { rd: usize, imm: u16 },
+    MoveImmediateToHighByte { rd: usize, imm: u16 },
+    LoadWord { rd: usize, rs: usize },
+    LoadToLowByte { rd: usize, rs: usize },
+    LoadToHighByte { rd: usize, rs: usize },
+    StoreWord { rs: usize, rd: usize },
+    StoreFromLowByte { rs: usize, rd: usize },
+    StoreFromHighByte { rs: usize, rd: usize },
+    JumpToOffset { offset: i16 },
+    JumpToPointer { rs: usize },
+    BranchIfCarry { offset: i16 },
+    BranchIfNotCarry { offset: i16 },
+    BranchIfOverflow { offset: i16 },
+    BranchIfNotOverflow { offset: i16 },
+    BranchIfZero { offset: i16 },
+    BranchIfNotZero { offset: i16 },
+    BranchIfSigned { offset: i16 },
+    BranchIfNotSigned { offset: i16 },
     Halt,
 }
 
@@ -67,6 +96,102 @@ impl Cpu {
                     0b101 => Ok(Instruction::Or { rd, ra, rb }),
                     0b110 => Ok(Instruction::Xor { rd, ra, rb }),
                     0b111 => Ok(Instruction::Not { rd, ra }),
+                    _ => unreachable!()
+                }
+            },
+            0x1 => {
+                let rd = ((instruction >> 9) & 0b111) as usize;
+                let rs = ((instruction >> 6) & 0b111) as usize;
+                let imm = (instruction >> 2) & 0b1111;
+                match instruction & 0b11 {
+                    0b00 => Ok(Instruction::LogicalLeftShift { rd, rs, imm }),
+                    0b01 => Ok(Instruction::LogicalRightShift { rd, rs, imm }),
+                    0b10 => Ok(Instruction::ArithmeticRightShift { rd, rs, imm }),
+                    0b11 => Ok(Instruction::RotateRight { rd, rs, imm }),
+                    _ => unreachable!()
+                }
+            },
+            0x2 => {
+                let rd: usize = ((instruction >> 9) & 0b111) as usize;
+                let imm = (instruction >> 1) & 0b1111_1111;
+                match instruction & 0b1 {
+                    0b0 => Ok(Instruction::AddImmediate { rd, imm }),
+                    0b1 => Ok(Instruction::SubImmediate { rd, imm }),
+                    _ => unreachable!()
+                }
+            },
+            0x3 => {
+                let ra = ((instruction >> 9) & 0b111) as usize;
+                let rb = ((instruction >> 6) & 0b111) as usize;
+                match instruction & 0b11 {
+                    0b00 => Ok(Instruction::Compare { ra, rb }),
+                    0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
+                    0b10 => Ok(Instruction::CompareLowBytes { ra, rb }),
+                    0b11 => Ok(Instruction::CompareHighBytes { ra, rb }),
+                    _ => unreachable!()
+                }
+            },
+            0x4 => {
+                let rs: usize = ((instruction >> 9) & 0b111) as usize;
+                let imm = (instruction >> 1) & 0b1111_1111;
+                match instruction & 0b1 {
+                    0b0 => Ok(Instruction::CompareImmediateWithLowByte { rs, imm }),
+                    0b1 => Ok(Instruction::CompareImmediateWithHighByte { rs, imm }),
+                    _ => unreachable!()
+                }
+            },
+            0x5 => {
+                let rd: usize = ((instruction >> 9) & 0b111) as usize;
+                let imm = (instruction >> 1) & 0b1111_1111;
+                match instruction & 0b1 {
+                    0b0 => Ok(Instruction::MoveImmediateToLowByte { rd, imm }),
+                    0b1 => Ok(Instruction::MoveImmediateToHighByte { rd, imm }),
+                    _ => unreachable!()
+                }
+            },
+            0x6 => {
+                let rd = ((instruction >> 9) & 0b111) as usize;
+                let rs = ((instruction >> 6) & 0b111) as usize;
+                match instruction & 0b11 {
+                    0b00 => Ok(Instruction::LoadWord { rd, rs }),
+                    0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
+                    0b10 => Ok(Instruction::LoadToLowByte { rd, rs }),
+                    0b11 => Ok(Instruction::LoadToHighByte { rd, rs }),
+                    _ => unreachable!()
+                }
+            },
+            0x7 => {
+                let rs = ((instruction >> 9) & 0b111) as usize;
+                let rd = ((instruction >> 6) & 0b111) as usize;
+                match instruction & 0b11 {
+                    0b00 => Ok(Instruction::StoreWord { rs, rd }),
+                    0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
+                    0b10 => Ok(Instruction::StoreFromLowByte { rs, rd }),
+                    0b11 => Ok(Instruction::StoreFromHighByte { rs, rd }),
+                    _ => unreachable!()
+                }
+            },
+            0x8 => {
+                let offset = instruction & 0b1111_1111_1111;
+                let offset = ((offset << 4) as i16) >> 4;
+                Ok(Instruction::JumpToOffset { offset })
+            },
+            0x9 => {
+                let rs = ((instruction >> 9) & 0b111) as usize;
+                Ok(Instruction::JumpToPointer { rs })
+            },
+            0xa => {
+                let offset = (instruction >> 3) & 0b1_1111_1111;
+                let offset = ((offset << 7) as i16) >> 7;
+                match instruction & 0b111 {
+                    0b000 => Ok(Instruction::BranchIfCarry { offset }),
+                    0b001 => Ok(Instruction::BranchIfNotCarry { offset }),
+                    0b010 => Ok(Instruction::BranchIfOverflow { offset }),
+                    0b011 => Ok(Instruction::BranchIfNotOverflow { offset}),
+                    0b100 => Ok(Instruction::BranchIfZero { offset }),
+                    0b101 => Ok(Instruction::BranchIfNotZero { offset }),
+                    0b110 => Ok(Instruction::BranchIfSigned { offset }),
+                    0b111 => Ok(Instruction::BranchIfNotSigned { offset }),
                     _ => unreachable!()
                 }
             },
@@ -167,6 +292,35 @@ impl Cpu {
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
             },
+            Instruction::LogicalLeftShift { rd, rs, imm } => todo!(),
+            Instruction::LogicalRightShift { rd, rs, imm } => todo!(),
+            Instruction::ArithmeticRightShift { rd, rs, imm } => todo!(),
+            Instruction::RotateRight { rd, rs, imm } => todo!(),
+            Instruction::AddImmediate { rd, imm } => todo!(),
+            Instruction::SubImmediate { rd, imm } => todo!(),
+            Instruction::Compare { ra, rb } => todo!(),
+            Instruction::CompareLowBytes { ra, rb } => todo!(),
+            Instruction::CompareHighBytes { ra, rb } => todo!(),
+            Instruction::CompareImmediateWithLowByte { rs, imm } => todo!(),
+            Instruction::CompareImmediateWithHighByte { rs, imm } => todo!(),
+            Instruction::MoveImmediateToLowByte { rd, imm } => todo!(),
+            Instruction::MoveImmediateToHighByte { rd, imm } => todo!(),
+            Instruction::LoadWord { rd, rs } => todo!(),
+            Instruction::LoadToLowByte { rd, rs } => todo!(),
+            Instruction::LoadToHighByte { rd, rs } => todo!(),
+            Instruction::StoreWord { rs, rd } => todo!(),
+            Instruction::StoreFromLowByte { rs, rd } => todo!(),
+            Instruction::StoreFromHighByte { rs, rd } => todo!(),
+            Instruction::JumpToOffset { offset } => todo!(),
+            Instruction::JumpToPointer { rs } => todo!(),
+            Instruction::BranchIfCarry { offset } => todo!(),
+            Instruction::BranchIfNotCarry { offset } => todo!(),
+            Instruction::BranchIfOverflow { offset } => todo!(),
+            Instruction::BranchIfNotOverflow { offset } => todo!(),
+            Instruction::BranchIfZero { offset } => todo!(),
+            Instruction::BranchIfNotZero { offset } => todo!(),
+            Instruction::BranchIfSigned { offset } => todo!(),
+            Instruction::BranchIfNotSigned { offset } => todo!(),
             Instruction::Halt => self.halted = true
         }
     }

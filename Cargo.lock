@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "risc16"
-version = "1.0.0-alpha"
+version = "1.0.0-alpha.0"
 dependencies = [
  "anyhow",
  "clap",
