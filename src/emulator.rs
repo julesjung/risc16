@@ -1,12 +1,4 @@
-use std::{fs::read};
-
 use anyhow::{bail, Result};
-use clap::Parser;
-
-#[derive(Parser)]
-struct Args {
-    input: String
-}
 
 enum Instruction {
     Add { rd: usize, ra: usize, rb: usize },
@@ -21,19 +13,19 @@ enum Instruction {
 }
 
 #[derive(Default)]
-struct Flags {
-    carry: bool,
-    overflow: bool,
-    zero: bool,
-    signed: bool
+pub struct Flags {
+    pub carry: bool,
+    pub overflow: bool,
+    pub zero: bool,
+    pub signed: bool
 }
 
-struct Cpu {
-    memory: [u8; 65536],
-    registers: [u16; 8],
-    flags: Flags,
-    program_counter: u16,
-    halted: bool,
+pub struct Cpu {
+    pub memory: [u8; 65536],
+    pub registers: [u16; 8],
+    pub flags: Flags,
+    pub program_counter: u16,
+    pub halted: bool,
 }
 
 impl Default for Cpu {
@@ -43,7 +35,7 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         while !self.halted {
             let instruction = self.fetch();
             let instruction = self.decode(instruction)?;
@@ -178,7 +170,7 @@ impl Cpu {
     }
 }
 
-trait Memory {
+pub trait Memory {
     fn read_byte(&self, address: u16) -> u8;
     fn write_byte(&mut self, address: u16, value: u8);
 
@@ -204,17 +196,5 @@ impl Memory for Cpu {
     fn write_byte(&mut self, address: u16, value: u8) {
         self.memory[address as usize] = value;   
     }
-}
-
-fn main() -> Result<()> {
-    let mut cpu = Cpu::default();
-    let args = Args::parse();
-    let program = read(args.input)?;
-    for (index, byte) in program.iter().enumerate() {
-        cpu.write_byte(index as u16, *byte);
-    }
-    cpu.run()?;
-    println!("{:?}", &cpu.memory[0x0100..0x0110]);
-    Ok(())
 }
 

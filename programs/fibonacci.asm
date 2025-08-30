@@ -8,6 +8,8 @@
 ; - r4: maximum value
 ; - r5: next number
 
+#bank code
+
     MOVL r2, 1      ; r2 = F(1)
     MOVH r3, 0x01   ; r3 = 0x0100 (initial memory address)
     MOVL r4, 0xff   ; r4 = 0x00ff (maximum value)

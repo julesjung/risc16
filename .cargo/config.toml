@@ -1,0 +1,3 @@
+[alias]
+assemble = "run -- assemble"
+emulate = "run -- emulate"
