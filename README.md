@@ -70,6 +70,12 @@ end:
     HLT             ; halt the program
 ```
 
+Then, run the program with:
+
+```sh
+risc16 emulate fibonacci.asm
+```
+
 More programs can be found in the `examples/` directory.
 
 ## Usage
