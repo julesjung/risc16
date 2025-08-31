@@ -30,7 +30,7 @@ jobs:
       - name: Build for target
         run: cross build --release --target ${{ matrix.target }}
       - name: Upload binaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: risc16-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/
