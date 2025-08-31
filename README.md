@@ -9,28 +9,28 @@ This project provides a simple platform for experimenting with ISA design and em
 
 ## Features
 
-- 16-bit CPU with 8 general-purpose registers
-- `r0` hard-wired to zero, `r7` used as stack pointer
-- ALU with ADD, ADC, SUB, SBB, AND, OR, XOR, NOT, shifts, rotates
-- Full flag support (zero, carry, signed, overflow)
-- Branching and jumping with signed offsets
-- Load/store for 8-bit and 16-bit memory access
-- Emulator written in Rust with a simple CLI
-- Program assembly with [customasm](https://github.com/hlorenzi/customasm)
+- **Registers**: 8 16-bit general-purpose registers (r0 fixed to zero, r7 as stack pointer)
+- **ALU operations**: `ADD`, `ADC`, `SUB`, `SBB`, `AND`, `OR`, `XOR`, `NOT`, shifts, rotates
+- **Flags**: `CARRY`, `OVERFLOW`, `ZERO`, `SIGNED`, 
+- **Control flow**: conditional branches and jumps with signed offsets
+- **Memory access**: 8-bit and 16-bit load/store instructions
+- **Tools**:
+    - Emulator written in Rust with a simple CLI
+    - Assembler made with [customasm](https://github.com/hlorenzi/customasm)
 
 ## Installation
 
-### Using Cargo
+### From Cargo
 
-Make sure that you have Rust installed on your system. If not, download and install it from [the official website](https://www.rust-lang.org/tools/install). Then, you can directly install the `risc16` cli using Cargo:
+Make sure that you have Rust installed on your system. Then, run:
 
 ```sh
 cargo install risc16 --git https://github.com/julesjung/risc16.git
 ```
 
-### Using pre-built binaries
+### From pre-built binaries
 
-You can find the pre-built binaries on the [GitHub releases page](https://github.com/julesjung/risc16/releases). Choose the latest release and download the binary corresponding to your operating system and architecture.
+Open the latest release from [the releases page](https://github.com/julesjung/risc16/releases) and download the binary corresponding to your operating system and architecture.
 
 ## Example
 
@@ -70,7 +70,7 @@ end:
     HLT             ; halt the program
 ```
 
-More examples available in the `examples/` directory.
+More programs can be found in the `examples/` directory.
 
 ## Usage
 
@@ -82,4 +82,4 @@ risc16 help
 
 ## License
 
-This project is licensed under the GPLv3 license. See the LICENSE file for more details.
+Licensed under the [GPLv3](https://github.com/julesjung/risc16/blob/main/LICENSE.txt).
