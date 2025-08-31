@@ -1,7 +1,7 @@
 # RISC16
 
 [![GitHub License](https://img.shields.io/github/license/julesjung/risc16)](https://github.com/julesjung/risc16/blob/main/LICENSE.txt)
-[![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16)](https://github.com/julesjung/risc16/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/julesjung/risc16?include_prereleases)](https://github.com/julesjung/risc16/releases/latest)
 
 RISC16 is a custom **16-bit RISC CPU architecture** featuring a Rust-based emulator and assembler support via [customasm](https://github.com/hlorenzi/customasm).
 It implements arithmetic, logic, branching, and memory instructions, with 8 general-purpose registers (r0-r7).
