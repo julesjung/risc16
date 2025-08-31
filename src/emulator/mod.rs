@@ -292,17 +292,119 @@ impl Cpu {
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
             },
-            Instruction::LogicalLeftShift { rd, rs, imm } => todo!(),
-            Instruction::LogicalRightShift { rd, rs, imm } => todo!(),
-            Instruction::ArithmeticRightShift { rd, rs, imm } => todo!(),
-            Instruction::RotateRight { rd, rs, imm } => todo!(),
-            Instruction::AddImmediate { rd, imm } => todo!(),
-            Instruction::SubImmediate { rd, imm } => todo!(),
-            Instruction::Compare { ra, rb } => todo!(),
-            Instruction::CompareLowBytes { ra, rb } => todo!(),
-            Instruction::CompareHighBytes { ra, rb } => todo!(),
-            Instruction::CompareImmediateWithLowByte { rs, imm } => todo!(),
-            Instruction::CompareImmediateWithHighByte { rs, imm } => todo!(),
+            Instruction::LogicalLeftShift { rd, rs, imm } => {
+                let rs = self.registers[rs];
+                let result = rs << imm;
+                self.registers[rd] = result;
+                self.flags.carry = ((rs >> (16 - imm)) & 1) != 0;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::LogicalRightShift { rd, rs, imm } => {
+                let rs = self.registers[rs];
+                let result = rs >> imm;
+                self.registers[rd] = result;
+                self.flags.carry = ((rs >> (imm - 1)) & 1) != 0;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::ArithmeticRightShift { rd, rs, imm } => {
+                let rs = self.registers[rs] as i16;
+                let result = (rs >> imm) as u16;
+                self.registers[rd] = result;
+                self.flags.carry = (((rs as u16) >> (imm - 1)) & 1) != 0;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::RotateRight { rd, rs, imm } => {
+                let rs = self.registers[rs];
+                let result = (rs >> imm) | (rs << (16 - imm));
+                self.registers[rd] = result;
+                self.flags.carry = (result >> 15) & 1 != 0;
+                self.flags.overflow = false;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::AddImmediate { rd, imm } => {
+                let ra = self.registers[rd];
+                let (result, carry) = ra.overflowing_add(imm);
+                self.registers[rd] = result;
+                self.flags.carry = carry;
+                let xor1 = ra ^ result;
+                let xor2 = imm ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::SubImmediate { rd, imm } => {
+                let ra = self.registers[rd];
+                let (result, borrow) = ra.overflowing_sub(imm);
+                self.registers[rd] = result;
+                self.flags.carry = borrow;
+                let xor1 = ra ^ imm;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::Compare { ra, rb } => {
+                let ra = self.registers[ra];
+                let rb = self.registers[rb];
+                let (result, borrow) = ra.overflowing_sub(rb);
+                self.flags.carry = borrow;
+                let xor1 = ra ^ rb;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x8000) != 0;
+            },
+            Instruction::CompareLowBytes { ra, rb } => {
+                let ra = self.registers[ra] as u8;
+                let rb = self.registers[rb] as u8;
+                let (result, borrow) = ra.overflowing_sub(rb);
+                self.flags.carry = borrow;
+                let xor1 = ra ^ rb;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x80) != 0;
+            },
+            Instruction::CompareHighBytes { ra, rb } => {
+                let ra = (self.registers[ra] >> 8) as u8;
+                let rb = (self.registers[rb] >> 8) as u8;
+                let (result, borrow) = ra.overflowing_sub(rb);
+                self.flags.carry = borrow;
+                let xor1 = ra ^ rb;
+                let xor2 = ra ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x80) != 0;
+            },
+            Instruction::CompareImmediateWithLowByte { rs, imm } => {
+                let rs = self.registers[rs] as u8;
+                let imm = imm as u8;
+                let (result, borrow) = rs.overflowing_sub(imm);
+                self.flags.carry = borrow;
+                let xor1 = rs ^ imm;
+                let xor2 = rs ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x80) != 0;
+            },
+            Instruction::CompareImmediateWithHighByte { rs, imm } => {
+                let rs = (self.registers[rs] >> 8) as u8;
+                let imm = imm as u8;
+                let (result, borrow) = rs.overflowing_sub(imm);
+                self.flags.carry = borrow;
+                let xor1 = rs ^ imm;
+                let xor2 = rs ^ result;
+                self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
+                self.flags.zero = result == 0;
+                self.flags.signed = (result & 0x80) != 0;
+            },
             Instruction::MoveImmediateToLowByte { rd, imm } => {
                 self.registers[rd] = (self.registers[rd] & 0xFF00) | imm;
             },

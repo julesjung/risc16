@@ -13,7 +13,7 @@ pub fn assemble(input: &str, output: &str) -> Result<()> {
     file.write_all(RISC16_ARCHITECTURE.as_bytes()).unwrap();
 
     let result = Command::new("customasm")
-        .args([architecture.to_str().unwrap(), &input, "-o", &output, "-f", "binary", "-q"])
+        .args([architecture.to_str().unwrap(), input, "-o", output, "-f", "binary", "-q"])
         .status();
 
     if let Ok(result) = result {

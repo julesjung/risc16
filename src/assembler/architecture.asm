@@ -80,6 +80,18 @@
     BS  {offset: off9} => le(0xa @ offset @ 0b110)
     BNS {offset: off9} => le(0xa @ offset @ 0b111)
 
+    ; BSET {rd: register, imm: u4}
+    ; BCLR {rd: register, imm: u4}
+    ; BTST {rd: register, imm: u4}
+
+    ; ANDI {rd: register, imm: u8}
+    ; ORI  {rd: register, imm: u8}
+
+    ; PUSH {rs: regiser}
+    ; POP {rd: register}
+    ; CALL {offset: off12}
+    ; RET
+
     HLT => le(0xf000)
 }
 
