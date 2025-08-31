@@ -1,6 +1,6 @@
-use std::fs::read;
-use anyhow::{bail, Result};
 use crate::assembler::assemble_to_binary;
+use anyhow::{Result, bail};
+use std::fs::read;
 
 enum Instruction {
     Add { rd: usize, ra: usize, rb: usize },
@@ -43,12 +43,12 @@ enum Instruction {
     Halt,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Flags {
     pub carry: bool,
     pub overflow: bool,
     pub zero: bool,
-    pub signed: bool
+    pub signed: bool,
 }
 
 pub struct Cpu {
@@ -59,9 +59,26 @@ pub struct Cpu {
     pub halted: bool,
 }
 
+pub struct EmulatorOptions {
+    pub step: bool,
+    pub cycles: Option<u64>,
+    pub show_registers: bool,
+    pub show_flags: bool,
+    pub show_memory: bool,
+    pub memory_start: u16,
+    pub memory_end: u16,
+    pub memory_format: String,
+}
+
 impl Default for Cpu {
     fn default() -> Self {
-        Cpu { memory: [0; 65536], registers: [0; 8], flags: Flags::default(), program_counter: 0, halted: false }
+        Cpu {
+            memory: [0; 65536],
+            registers: [0; 8],
+            flags: Flags::default(),
+            program_counter: 0,
+            halted: false,
+        }
     }
 }
 
@@ -96,9 +113,9 @@ impl Cpu {
                     0b101 => Ok(Instruction::Or { rd, ra, rb }),
                     0b110 => Ok(Instruction::Xor { rd, ra, rb }),
                     0b111 => Ok(Instruction::Not { rd, ra }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x1 => {
                 let rd = ((instruction >> 9) & 0b111) as usize;
                 let rs = ((instruction >> 6) & 0b111) as usize;
@@ -108,18 +125,18 @@ impl Cpu {
                     0b01 => Ok(Instruction::LogicalRightShift { rd, rs, imm }),
                     0b10 => Ok(Instruction::ArithmeticRightShift { rd, rs, imm }),
                     0b11 => Ok(Instruction::RotateRight { rd, rs, imm }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x2 => {
                 let rd: usize = ((instruction >> 9) & 0b111) as usize;
                 let imm = (instruction >> 1) & 0b1111_1111;
                 match instruction & 0b1 {
                     0b0 => Ok(Instruction::AddImmediate { rd, imm }),
                     0b1 => Ok(Instruction::SubImmediate { rd, imm }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x3 => {
                 let ra = ((instruction >> 9) & 0b111) as usize;
                 let rb = ((instruction >> 6) & 0b111) as usize;
@@ -128,27 +145,27 @@ impl Cpu {
                     0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
                     0b10 => Ok(Instruction::CompareLowBytes { ra, rb }),
                     0b11 => Ok(Instruction::CompareHighBytes { ra, rb }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x4 => {
                 let rs: usize = ((instruction >> 9) & 0b111) as usize;
                 let imm = (instruction >> 1) & 0b1111_1111;
                 match instruction & 0b1 {
                     0b0 => Ok(Instruction::CompareImmediateWithLowByte { rs, imm }),
                     0b1 => Ok(Instruction::CompareImmediateWithHighByte { rs, imm }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x5 => {
                 let rd: usize = ((instruction >> 9) & 0b111) as usize;
                 let imm = (instruction >> 1) & 0b1111_1111;
                 match instruction & 0b1 {
                     0b0 => Ok(Instruction::MoveImmediateToLowByte { rd, imm }),
                     0b1 => Ok(Instruction::MoveImmediateToHighByte { rd, imm }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x6 => {
                 let rd = ((instruction >> 9) & 0b111) as usize;
                 let rs = ((instruction >> 6) & 0b111) as usize;
@@ -157,9 +174,9 @@ impl Cpu {
                     0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
                     0b10 => Ok(Instruction::LoadToLowByte { rd, rs }),
                     0b11 => Ok(Instruction::LoadToHighByte { rd, rs }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x7 => {
                 let rs = ((instruction >> 9) & 0b111) as usize;
                 let rd = ((instruction >> 6) & 0b111) as usize;
@@ -168,18 +185,18 @@ impl Cpu {
                     0b01 => bail!("Unknown instruction: 0x{instruction:04x}"),
                     0b10 => Ok(Instruction::StoreFromLowByte { rs, rd }),
                     0b11 => Ok(Instruction::StoreFromHighByte { rs, rd }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0x8 => {
                 let offset = instruction & 0b1111_1111_1111;
                 let offset = ((offset << 4) as i16) >> 4;
                 Ok(Instruction::JumpToOffset { offset })
-            },
+            }
             0x9 => {
                 let rs = ((instruction >> 9) & 0b111) as usize;
                 Ok(Instruction::JumpToPointer { rs })
-            },
+            }
             0xa => {
                 let offset = (instruction >> 3) & 0b1_1111_1111;
                 let offset = ((offset << 7) as i16) >> 7;
@@ -187,16 +204,16 @@ impl Cpu {
                     0b000 => Ok(Instruction::BranchIfCarry { offset }),
                     0b001 => Ok(Instruction::BranchIfNotCarry { offset }),
                     0b010 => Ok(Instruction::BranchIfOverflow { offset }),
-                    0b011 => Ok(Instruction::BranchIfNotOverflow { offset}),
+                    0b011 => Ok(Instruction::BranchIfNotOverflow { offset }),
                     0b100 => Ok(Instruction::BranchIfZero { offset }),
                     0b101 => Ok(Instruction::BranchIfNotZero { offset }),
                     0b110 => Ok(Instruction::BranchIfSigned { offset }),
                     0b111 => Ok(Instruction::BranchIfNotSigned { offset }),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
-            },
+            }
             0xf => Ok(Instruction::Halt),
-            _ => bail!("Unknown instruction: 0x{instruction:04x}")
+            _ => bail!("Unknown instruction: 0x{instruction:04x}"),
         }
     }
 
@@ -213,7 +230,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::AddWithCarry { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -227,8 +244,8 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
-            Instruction::Subtract { rd,ra, rb } => {
+            }
+            Instruction::Subtract { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
                 let (result, borrow) = ra.overflowing_sub(rb);
@@ -239,7 +256,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::SubtractWithBorrow { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -253,7 +270,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::And { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -263,7 +280,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::Or { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -273,7 +290,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::Xor { rd, ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -283,7 +300,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::Not { rd, ra } => {
                 let result = !self.registers[ra];
                 self.registers[rd] = result;
@@ -291,7 +308,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::LogicalLeftShift { rd, rs, imm } => {
                 let rs = self.registers[rs];
                 let result = rs << imm;
@@ -300,7 +317,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::LogicalRightShift { rd, rs, imm } => {
                 let rs = self.registers[rs];
                 let result = rs >> imm;
@@ -309,7 +326,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::ArithmeticRightShift { rd, rs, imm } => {
                 let rs = self.registers[rs] as i16;
                 let result = (rs >> imm) as u16;
@@ -318,7 +335,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::RotateRight { rd, rs, imm } => {
                 let rs = self.registers[rs];
                 let result = (rs >> imm) | (rs << (16 - imm));
@@ -327,7 +344,7 @@ impl Cpu {
                 self.flags.overflow = false;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::AddImmediate { rd, imm } => {
                 let ra = self.registers[rd];
                 let (result, carry) = ra.overflowing_add(imm);
@@ -338,7 +355,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::SubImmediate { rd, imm } => {
                 let ra = self.registers[rd];
                 let (result, borrow) = ra.overflowing_sub(imm);
@@ -349,7 +366,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::Compare { ra, rb } => {
                 let ra = self.registers[ra];
                 let rb = self.registers[rb];
@@ -360,7 +377,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x8000) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x8000) != 0;
-            },
+            }
             Instruction::CompareLowBytes { ra, rb } => {
                 let ra = self.registers[ra] as u8;
                 let rb = self.registers[rb] as u8;
@@ -371,7 +388,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x80) != 0;
-            },
+            }
             Instruction::CompareHighBytes { ra, rb } => {
                 let ra = (self.registers[ra] >> 8) as u8;
                 let rb = (self.registers[rb] >> 8) as u8;
@@ -382,7 +399,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x80) != 0;
-            },
+            }
             Instruction::CompareImmediateWithLowByte { rs, imm } => {
                 let rs = self.registers[rs] as u8;
                 let imm = imm as u8;
@@ -393,7 +410,7 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x80) != 0;
-            },
+            }
             Instruction::CompareImmediateWithHighByte { rs, imm } => {
                 let rs = (self.registers[rs] >> 8) as u8;
                 let imm = imm as u8;
@@ -404,84 +421,84 @@ impl Cpu {
                 self.flags.overflow = ((xor1 & xor2) & 0x80) != 0;
                 self.flags.zero = result == 0;
                 self.flags.signed = (result & 0x80) != 0;
-            },
+            }
             Instruction::MoveImmediateToLowByte { rd, imm } => {
                 self.registers[rd] = (self.registers[rd] & 0xFF00) | imm;
-            },
+            }
             Instruction::MoveImmediateToHighByte { rd, imm } => {
                 self.registers[rd] = (self.registers[rd] & 0x00FF) | imm << 8;
-            },
+            }
             Instruction::LoadWord { rd, rs } => {
                 let value = self.read_word(self.registers[rs]);
                 self.registers[rd] = value;
-            },
+            }
             Instruction::LoadToLowByte { rd, rs } => {
                 let value = self.read_byte(self.registers[rs]) as u16;
                 self.registers[rd] = (self.registers[rd] & 0xFF00) | value;
-            },
+            }
             Instruction::LoadToHighByte { rd, rs } => {
                 let value = self.read_byte(self.registers[rs]) as u16;
                 self.registers[rd] = (self.registers[rd] & 0x00FF) | value << 8;
-            },
+            }
             Instruction::StoreWord { rs, rd } => {
                 let value = self.registers[rs];
                 self.write_word(self.registers[rd], value);
-            },
+            }
             Instruction::StoreFromLowByte { rs, rd } => {
                 let value = (self.registers[rs] & 0xff) as u8;
                 self.write_byte(self.registers[rd], value);
-            },
+            }
             Instruction::StoreFromHighByte { rs, rd } => {
                 let value = (self.registers[rs] >> 8) as u8;
                 self.write_byte(self.registers[rd], value);
-            },
+            }
             Instruction::JumpToOffset { offset } => {
                 self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
-            },
+            }
             Instruction::JumpToPointer { rs } => {
                 self.program_counter = self.registers[rs];
-            },
+            }
             Instruction::BranchIfCarry { offset } => {
                 if self.flags.carry {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfNotCarry { offset } => {
                 if !self.flags.carry {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfOverflow { offset } => {
                 if self.flags.overflow {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfNotOverflow { offset } => {
                 if !self.flags.overflow {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfZero { offset } => {
                 if self.flags.zero {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfNotZero { offset } => {
                 if !self.flags.zero {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfSigned { offset } => {
                 if self.flags.signed {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
+            }
             Instruction::BranchIfNotSigned { offset } => {
                 if !self.flags.signed {
                     self.program_counter = self.program_counter.wrapping_add_signed(offset << 1);
                 }
-            },
-            Instruction::Halt => self.halted = true
+            }
+            Instruction::Halt => self.halted = true,
         }
     }
 }
@@ -510,33 +527,44 @@ impl Memory for Cpu {
     }
 
     fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[address as usize] = value;   
+        self.memory[address as usize] = value;
     }
 }
 
-pub fn emulate_binary(binary: Vec<u8>) -> Result<()> {
+pub fn emulate_binary(binary: Vec<u8>, options: EmulatorOptions) -> Result<()> {
     let mut cpu = Cpu::default();
     for (index, byte) in binary.iter().enumerate() {
         cpu.write_byte(index as u16, *byte);
     }
     cpu.run()?;
-    println!("{:?}", &cpu.memory[0x0100..0x0110]);
-    
+
+    if options.show_registers {
+        println!("{:?}", cpu.registers);
+    }
+
+    if options.show_flags {
+        println!("{:?}", cpu.flags);
+    }
+
+    if options.show_memory {
+        let range_start = options.memory_start as usize;
+        let range_end = options.memory_end as usize;
+        println!("{:?}", &cpu.memory[range_start..range_end]);
+    }
+
     Ok(())
 }
 
-pub fn emulate_file(input: &str, format: &str) -> Result<()> {
-    match format {
+pub fn emulate_file(input: String, input_format: String, options: EmulatorOptions) -> Result<()> {
+    match input_format.as_str() {
         "asm" => {
-            let binary = assemble_to_binary(input)?;
-            emulate_binary(binary)
-        },
-        "bin" => {
-            let binary = read(input)?;
-            emulate_binary(binary)
+            let binary = assemble_to_binary(input.as_str())?;
+            emulate_binary(binary, options)
         }
-        _ => unreachable!()
+        "bin" => {
+            let binary = read(input.as_str())?;
+            emulate_binary(binary, options)
+        }
+        _ => unreachable!(),
     }
-    
 }
-

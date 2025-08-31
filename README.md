@@ -11,7 +11,7 @@ This project provides a simple platform for experimenting with ISA design and em
 
 - **Registers**: 8 16-bit general-purpose registers (r0 fixed to zero, r7 as stack pointer)
 - **ALU operations**: `ADD`, `ADC`, `SUB`, `SBB`, `AND`, `OR`, `XOR`, `NOT`, shifts, rotates
-- **Flags**: `CARRY`, `OVERFLOW`, `ZERO`, `SIGNED`, 
+- **Flags**: `CARRY`, `OVERFLOW`, `ZERO`, `SIGNED`
 - **Control flow**: conditional branches and jumps with signed offsets
 - **Memory access**: 8-bit and 16-bit load/store instructions
 - **Tools**:
@@ -34,7 +34,7 @@ Open the latest release from [the releases page](https://github.com/julesjung/ri
 
 ## Example
 
-Create a file named `fibonacci.asm` and paste this assembly code in it :
+Create a file named `fibonacci.asm` and paste this assembly code in it:
 
 ```asm
 ; This program calculates the Fibonacci sequence using a loop.
@@ -73,7 +73,7 @@ end:
 Then, run the program with:
 
 ```sh
-risc16 emulate fibonacci.asm
+risc16 emulate fibonacci.asm --show-memory --memory-start 256 --memory-end 270
 ```
 
 More programs can be found in the `examples/` directory.
