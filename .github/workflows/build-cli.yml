@@ -40,7 +40,7 @@ jobs:
       - run: Compress-Archive -Path "target/${{ matrix.target }}/release/risc16.exe" -DestinationPath "target/${{ matrix.target }}/release/risc16.zip"
       - uses: actions/upload-artifact@v4
         with:
-          name: risc16-${{ matrix.target }}
+          name: risc16-${{ matrix.target }}.zip
           path: target/${{ matrix.target }}/release/risc16.zip
   build-macos:
     runs-on: macos-latest
