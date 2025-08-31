@@ -1,0 +1,36 @@
+name: Build CLI
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          [
+            x86_64-unknown-linux-gnu,
+            aarch64-unknown-linux-gnu,
+            x86_64-unknown-linux-musl,
+            x86_64-apple-darwin,
+            aarch64-apple-darwin,
+            x86_64-pc-windows-msvc,
+          ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross
+        run: cargo install cross
+      - name: Build for target
+        run: cross build --release --target ${{ matrix.target }}
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: risc16-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/
