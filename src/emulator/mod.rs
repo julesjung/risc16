@@ -1,6 +1,6 @@
 use std::fs::read;
-
 use anyhow::{bail, Result};
+use crate::assembler::assemble_to_binary;
 
 enum Instruction {
     Add { rd: usize, ra: usize, rb: usize },
@@ -514,16 +514,29 @@ impl Memory for Cpu {
     }
 }
 
-pub fn emulate(input: &str) -> Result<()> {
-    let program = read(input)?;
-
+pub fn emulate_binary(binary: Vec<u8>) -> Result<()> {
     let mut cpu = Cpu::default();
-    for (index, byte) in program.iter().enumerate() {
+    for (index, byte) in binary.iter().enumerate() {
         cpu.write_byte(index as u16, *byte);
     }
     cpu.run()?;
     println!("{:?}", &cpu.memory[0x0100..0x0110]);
     
     Ok(())
+}
+
+pub fn emulate_file(input: &str, format: &str) -> Result<()> {
+    match format {
+        "asm" => {
+            let binary = assemble_to_binary(input)?;
+            emulate_binary(binary)
+        },
+        "bin" => {
+            let binary = read(input)?;
+            emulate_binary(binary)
+        }
+        _ => unreachable!()
+    }
+    
 }
 

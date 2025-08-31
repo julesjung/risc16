@@ -1,27 +1,38 @@
-use std::fs::File;
-use std::io::Write;
-use std::env;
-use std::process::Command;
+use std::fs;
 use anyhow::{bail, Result};
+use customasm::{asm, diagn, util};
 
 const RISC16_ARCHITECTURE: &str = include_str!("architecture.asm");
 
-pub fn assemble(input: &str, output: &str) -> Result<()> {
-    let tmp_dir = env::temp_dir();
-    let architecture = tmp_dir.join("risc16_architecture.asm");
-    let mut file = File::create(&architecture).unwrap();
-    file.write_all(RISC16_ARCHITECTURE.as_bytes()).unwrap();
+pub fn assemble_to_binary(input: &str) -> Result<Vec<u8>> {
+    let program = fs::read_to_string(input)?;
 
-    let result = Command::new("customasm")
-        .args([architecture.to_str().unwrap(), input, "-o", output, "-f", "binary", "-q"])
-        .status();
+	let mut report = diagn::Report::new();
+	let mut fileserver = util::FileServerMock::new();
+	fileserver.add("architecture.asm", RISC16_ARCHITECTURE);
+    fileserver.add(input, program);
 
-    if let Ok(result) = result {
-        if !result.success() {
-            bail!("Unable to assemble the program");
-        }
-        Ok(())
+	let opts = asm::AssemblyOptions::new();
+
+	let assembly = asm::assemble(
+		&mut report,
+		&opts,
+		&mut fileserver,
+		&["architecture.asm", input]);
+    
+    let result = assembly.output.map(|output| output.format_binary());
+
+    report.print_all(&mut std::io::stderr().lock(), &fileserver, true);
+
+    if let Some(result) = result {
+        Ok(result)
     } else {
-        bail!("Unable to run customasm. Make sure it is correctly installed");
+        bail!("unable to assemble program");
     }
+}
+
+pub fn assemble_to_file(input: &str, output: &str) -> Result<()> {
+    let bytes = assemble_to_binary(input)?;
+    fs::write(output, bytes)?;
+    Ok(())
 }

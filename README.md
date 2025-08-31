@@ -20,17 +20,6 @@ This project provides a simple platform for experimenting with ISA design and em
 
 ## Installation
 
-### Dependencies
-
-This project requires [`customasm`](https://github.com/hlorenzi/customasm) for assembling programs. You can install it with Cargo:
-
-```sh
-cargo install customasm
-```
-
-Or follow the installation instructions in the [`customasm`](https://github.com/hlorenzi/customasm) repository.
-
-
 ### Using Cargo
 
 Make sure that you have Rust installed on your system. If not, download and install it from [the official website](https://www.rust-lang.org/tools/install). Then, you can directly install the `risc16` cli using Cargo:
