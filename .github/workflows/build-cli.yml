@@ -22,13 +22,9 @@ jobs:
           ]
     steps:
       - uses: actions/checkout@v5
-      - name: Install cross
-        run: cargo install cross
-      - name: Build for target
-        run: cross build --release --target ${{ matrix.target }}
-      - name: Zip binary
-        run: |
-          zip -j target/${{ matrix.target }}/release/risc16.zip target/${{ matrix.target }}/release/risc16
+      - run: cargo install cross
+      - run: cross build --release --target ${{ matrix.target }}
+      - run: zip -j target/${{ matrix.target }}/release/risc16.zip target/${{ matrix.target }}/release/risc16
       - uses: actions/upload-artifact@v4
         with:
           name: risc16-${{ matrix.target }}.zip
@@ -41,9 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: cargo build --release --target ${{ matrix.target }}
-      - name: Zip binary
-        run: |
-          zip -j target/${{ matrix.target }}/release/risc16.zip target/${{ matrix.target }}/release/risc16
+      - run: Compress-Archive -Path "target/${{ matrix.target }}/release/risc16.exe" -DestinationPath "target/${{ matrix.target }}/release/risc16.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: risc16-${{ matrix.target }}
@@ -56,9 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: cargo build --release --target ${{ matrix.target }}
-      - name: Zip binary
-        run: |
-          zip -j target/${{ matrix.target }}/release/risc16.zip target/${{ matrix.target }}/release/risc16
+      - run: zip -j target/${{ matrix.target }}/release/risc16.zip target/${{ matrix.target }}/release/risc16
       - uses: actions/upload-artifact@v4
         with:
           name: risc16-${{ matrix.target }}
