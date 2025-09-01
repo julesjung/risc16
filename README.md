@@ -34,7 +34,7 @@ Open the latest release from [the releases page](https://github.com/julesjung/ri
 
 ## Example
 
-Create a file named `fibonacci.asm` and paste this assembly code in it:
+Create a file named `fibonacci.asm` and put this code in it:
 
 ```asm
 ; This program calculates the Fibonacci sequence using a loop.
@@ -73,14 +73,14 @@ end:
 Then, run the program with:
 
 ```sh
-risc16 emulate fibonacci.asm --show-memory --memory-start 256 --memory-end 270
+risc16 emulate fibonacci.asm --show-memory --memory-format bin
 ```
 
 More programs can be found in the `examples/` directory.
 
 ## Usage
 
-You can see all available commands and options with:
+To see all available commands:
 
 ```sh
 risc16 help
