@@ -2,14 +2,27 @@ use anyhow::{Result, bail};
 use customasm::{asm, diagn, util};
 use std::fs;
 
-const RISC16_ARCHITECTURE: &str = include_str!("architecture.asm");
+const STD_FILES: &[(&str, &str)] = &[
+    (
+        "<std>/architecture.asm",
+        include_str!("../arch/architecture.asm"),
+    ),
+    ("<std>/banks.asm", include_str!("../arch/banks.asm")),
+    (
+        "<std>/instructions.asm",
+        include_str!("../arch/instructions.asm"),
+    ),
+    ("<std>/macros.asm", include_str!("../arch/macros.asm")),
+    ("<std>/types.asm", include_str!("../arch/types.asm")),
+];
 
 pub fn assemble_to_binary(input: &str) -> Result<Vec<u8>> {
     let program = fs::read_to_string(input)?;
 
     let mut report = diagn::Report::new();
     let mut fileserver = util::FileServerMock::new();
-    fileserver.add("architecture.asm", RISC16_ARCHITECTURE);
+
+    fileserver.add_std_files(STD_FILES);
     fileserver.add(input, program);
 
     let opts = asm::AssemblyOptions::new();
@@ -18,7 +31,7 @@ pub fn assemble_to_binary(input: &str) -> Result<Vec<u8>> {
         &mut report,
         &opts,
         &mut fileserver,
-        &["architecture.asm", input],
+        &["<std>/architecture.asm", input],
     );
 
     let result = assembly.output.map(|output| output.format_binary());
