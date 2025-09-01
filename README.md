@@ -73,7 +73,7 @@ end:
 Then, run the program with:
 
 ```sh
-risc16 emulate fibonacci.asm --show-memory --memory-format bin
+risc16 emulate fibonacci.asm --show-memory --memory-format dec
 ```
 
 More programs can be found in the `examples/` directory.
