@@ -1,47 +1,7 @@
 use crate::assembler::assemble_to_binary;
+use crate::instructions::Instruction;
 use anyhow::{Result, bail};
-use std::fs::read;
-
-enum Instruction {
-    Add { rd: usize, ra: usize, rb: usize },
-    AddWithCarry { rd: usize, ra: usize, rb: usize },
-    Subtract { rd: usize, ra: usize, rb: usize },
-    SubtractWithBorrow { rd: usize, ra: usize, rb: usize },
-    And { rd: usize, ra: usize, rb: usize },
-    Or { rd: usize, ra: usize, rb: usize },
-    Xor { rd: usize, ra: usize, rb: usize },
-    Not { rd: usize, ra: usize },
-    LogicalLeftShift { rd: usize, rs: usize, imm: u16 },
-    LogicalRightShift { rd: usize, rs: usize, imm: u16 },
-    ArithmeticRightShift { rd: usize, rs: usize, imm: u16 },
-    RotateRight { rd: usize, rs: usize, imm: u16 },
-    AddImmediate { rd: usize, imm: u16 },
-    SubImmediate { rd: usize, imm: u16 },
-    Compare { ra: usize, rb: usize },
-    CompareLowBytes { ra: usize, rb: usize },
-    CompareHighBytes { ra: usize, rb: usize },
-    CompareImmediateWithLowByte { rs: usize, imm: u16 },
-    CompareImmediateWithHighByte { rs: usize, imm: u16 },
-    MoveImmediateToLowByte { rd: usize, imm: u16 },
-    MoveImmediateToHighByte { rd: usize, imm: u16 },
-    LoadWord { rd: usize, rs: usize },
-    LoadToLowByte { rd: usize, rs: usize },
-    LoadToHighByte { rd: usize, rs: usize },
-    StoreWord { rs: usize, rd: usize },
-    StoreFromLowByte { rs: usize, rd: usize },
-    StoreFromHighByte { rs: usize, rd: usize },
-    JumpToOffset { offset: i16 },
-    JumpToPointer { rs: usize },
-    BranchIfCarry { offset: i16 },
-    BranchIfNotCarry { offset: i16 },
-    BranchIfOverflow { offset: i16 },
-    BranchIfNotOverflow { offset: i16 },
-    BranchIfZero { offset: i16 },
-    BranchIfNotZero { offset: i16 },
-    BranchIfSigned { offset: i16 },
-    BranchIfNotSigned { offset: i16 },
-    Halt,
-}
+use std::{fs::read, str::FromStr};
 
 #[derive(Debug, Default)]
 pub struct Flags {
@@ -67,7 +27,43 @@ pub struct EmulatorOptions {
     pub show_memory: bool,
     pub memory_start: u16,
     pub memory_end: u16,
-    pub memory_format: String,
+    pub memory_format: MemoryFormat,
+}
+
+#[derive(Clone)]
+pub enum InputFormat {
+    Asm,
+    Bin,
+}
+
+impl FromStr for InputFormat {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "asm" => Ok(InputFormat::Asm),
+            "bin" => Ok(InputFormat::Bin),
+            _ => anyhow::bail!("invalid input format"),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum MemoryFormat {
+    Hex,
+    Dec,
+    Bin,
+}
+
+impl FromStr for MemoryFormat {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "hex" => Ok(MemoryFormat::Hex),
+            "dec" => Ok(MemoryFormat::Dec),
+            "bin" => Ok(MemoryFormat::Bin),
+            _ => anyhow::bail!("invalid input format"),
+        }
+    }
 }
 
 impl Default for Cpu {
@@ -549,22 +545,39 @@ pub fn emulate_binary(binary: Vec<u8>, options: EmulatorOptions) -> Result<()> {
     if options.show_memory {
         let range_start = options.memory_start as usize;
         let range_end = options.memory_end as usize;
-        println!("{:?}", &cpu.memory[range_start..range_end]);
+
+        let data = &cpu.memory[range_start..range_end];
+        for (i, chunk) in data.chunks(16).enumerate() {
+            let addr = range_start + i * 16;
+            print!("{:04x}: ", addr);
+
+            for byte in chunk {
+                match options.memory_format {
+                    MemoryFormat::Hex => print!("{:02x} ", byte),
+                    MemoryFormat::Dec => print!("{:03} ", byte),
+                    MemoryFormat::Bin => print!("{:08b} ", byte),
+                };
+            }
+            println!();
+        }
     }
 
     Ok(())
 }
 
-pub fn emulate_file(input: String, input_format: String, options: EmulatorOptions) -> Result<()> {
-    match input_format.as_str() {
-        "asm" => {
+pub fn emulate_file(
+    input: String,
+    input_format: InputFormat,
+    options: EmulatorOptions,
+) -> Result<()> {
+    match input_format {
+        InputFormat::Asm => {
             let binary = assemble_to_binary(input.as_str())?;
             emulate_binary(binary, options)
         }
-        "bin" => {
+        InputFormat::Bin => {
             let binary = read(input.as_str())?;
             emulate_binary(binary, options)
         }
-        _ => unreachable!(),
     }
 }
